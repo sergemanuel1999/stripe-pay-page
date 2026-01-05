@@ -30,32 +30,54 @@
 <body>
   <button id="pay">Pay Now</button>
 
-  <script>
-    const button = document.getElementById("pay");
+<script>
+  const button = document.getElementById("pay");
 
-    button.onclick = function() {
-      button.disabled = true;
-      button.textContent = "Starting payment...";
+  button.onclick = function() {
+    button.disabled = true;
+    button.textContent = "Starting payment...";
 
-      fetch("https://hook.us2.make.com/bc77gdh1aiq1vcph9jrve4gxd53evmv1")
-        .then(response => response.json())
-        .then(data => {
-          if (!data.url) {
-            alert("No payment URL returned.");
-            console.error("Response did not contain .url:", data);
-            button.disabled = false;
-            button.textContent = "Pay Now";
+    fetch("https://hook.us2.make.com/bc77gdh1aiq1vcph9jrve4gxd53evmv1", {
+      method: "POST"
+    })
+      .then(async response => {
+        const text = await response.text();
+        console.log("Raw webhook response:", text);
+
+        let data = null;
+
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.warn("Response was not valid JSON");
+        }
+
+        // If JSON parsed correctly and contains redirect
+        if (data && data.redirect) {
+          window.location.href = data.redirect;
+          return;
+        }
+
+        // If JSON failed but the redirect URL is in the raw text
+        if (text.includes("http")) {
+          const match = text.match(/https?:\/\/[^\s"']+/);
+          if (match) {
+            window.location.href = match[0];
             return;
           }
-          window.location.href = data.url;
-        })
-        .catch(err => {
-          console.error("Error starting payment session:", err);
-          alert("Could not start payment session.");
-          button.disabled = false;
-          button.textContent = "Pay Now";
-        });
-    };
-  </script>
+        }
+
+        alert("No redirect URL returned.");
+        button.disabled = false;
+        button.textContent = "Pay Now";
+      })
+      .catch(err => {
+        console.error("Error starting payment session:", err);
+        alert("Could not start payment session.");
+        button.disabled = false;
+        button.textContent = "Pay Now";
+      });
+  };
+</script>
 </body>
 </html>
